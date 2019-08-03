@@ -1,4 +1,10 @@
-## add break once someone has a 0 total... and fix when there's multiple overlapping
+"""
+insert pseduo code here
+
+
+===============================
+Author: Philip Chwistek
+"""
 
 class LifeguardNode:
     def __init__(self, start, end):
@@ -46,10 +52,14 @@ def readFileInput(pathToFile):
     output.sort(key=lambda x: x.shift[0]) # sort by time starting shift 
     return output
 
+def output(outputFile, totalHours):
+    f = open(outputFile, "w+")
+    f.write(str(totalHours))
+    f.close()
 
 def findMinLifeguard(sortedInput):
     
-    def checkRedundancy(currentNode, nextNode):
+    def checkRedundancy(currentNode, nextNode): ## checks whether Lifeguard's shift is entirely covered by another
         if currentNode.aloneStart <= nextNode.aloneStart and currentNode.aloneEnd >= nextNode.aloneEnd:
             nextNode.makeRedundant()
             return True
@@ -72,7 +82,7 @@ def findMinLifeguard(sortedInput):
                     minNode = currentNode
                     minIndex = 0
 
-                if currentNode.aloneEnd < nextNode.aloneStart or currentNode.redundant: 
+                if currentNode.aloneEnd < nextNode.aloneStart: 
                     nextNode = None
 
                 elif currentNode.aloneEnd > nextNode.aloneStart: 
@@ -128,11 +138,6 @@ def findMaxHours(inputFile):
             totalHours += intervalEnd - intervalStart
 
     return totalHours
-
-def output(outputFile, totalHours):
-    f = open(outputFile, "w+")
-    f.write(str(totalHours))
-    f.close()
 
 for i in range(10):
     totalHours  = findMaxHours('./input/' + str(i + 1) + '.in')
