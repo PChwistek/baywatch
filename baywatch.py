@@ -1,7 +1,8 @@
 """
-insert pseduo code here
-
-
+1. convert input to array of Lifeguard nodes
+2. sort array by shift start times
+3. Find the least productive lifeguard and remove them 
+5. Iterate over modified array and add to total, keeping in mind overlapping intervals
 ===============================
 Author: Philip Chwistek
 """
@@ -9,7 +10,6 @@ Author: Philip Chwistek
 class LifeguardNode:
     def __init__(self, start, end):
         self.shift = [start, end]
-        self.key = "{}.{}".format(start, end)
         self.aloneStart = start
         self.aloneEnd = end
         self.totalAlone = end - start
@@ -24,11 +24,13 @@ class LifeguardNode:
         self.aloneEnd = 0
         self.totalAlone = 0
 
-    def setAloneStart(self, aloneStart, conflictIndex):
+    def updateAloneStart(self, aloneStart):
         self.aloneStart = aloneStart
+        self.updateTotal()
 
-    def setAloneEnd(self, aloneEnd, conflictIndex):
+    def updateAloneEnd(self, aloneEnd):
         self.aloneEnd = aloneEnd
+        self.updateTotal()
 
     def __repr__(self):
         return "{}-{}".format(self.shift[0], self.shift[1])
@@ -59,13 +61,13 @@ def output(outputFile, totalHours):
 
 def findMinLifeguard(sortedInput):
     
-    def checkRedundancy(currentNode, nextNode): ## checks whether Lifeguard's shift is entirely covered by another
-        if currentNode.aloneStart <= nextNode.aloneStart and currentNode.aloneEnd >= nextNode.aloneEnd:
-            nextNode.makeRedundant()
+    def checkRedundancy(firstNode, otherNode): ## checks whether Lifeguard's shift is entirely covered by another
+        if firstNode.aloneStart <= otherNode.aloneStart and firstNode.aloneEnd >= otherNode.aloneEnd:
+            otherNode.makeRedundant()
             return True
         return False
 
-    minNode = None
+    minNode = sortedInput[0]
     minIndex = 0
 
     for index, currentNode in enumerate(sortedInput):
@@ -76,57 +78,47 @@ def findMinLifeguard(sortedInput):
             nextIndex += 1
             nextNode = sortedInput[nextIndex]
 
-        if not currentNode.redundant:
-            while nextNode != None:
-                if minNode is None:
-                    minNode = currentNode
-                    minIndex = 0
+        while nextNode != None:
+            if currentNode.aloneEnd < nextNode.aloneStart: # ex [x, 4], [5, y]
+                break
+            elif currentNode.aloneEnd > nextNode.aloneStart: # ex [x, 4], [3, y]
+                nextNodeRedundant = checkRedundancy(currentNode, nextNode)
+                currentNodeRedundant = checkRedundancy(nextNode, currentNode)
+                if nextNodeRedundant: # ex [x, 10], [x, 4]
+                    return nextIndex
+                elif currentNodeRedundant: # ex [x, 4], [x, 10]
+                    return index
+                else:
+                    temp = nextNode.aloneStart
+                    nextNode.updateAloneStart(currentNode.aloneEnd)
+                    currentNode.updateAloneEnd(temp)
+            
+                    if currentNode.totalAlone < minNode.totalAlone:
+                        minNode = currentNode
+                        minIndex = index
+                    elif nextNode.totalAlone < minNode.totalAlone:
+                        minNode = nextNode
+                        minIndex = nextIndex
 
-                if currentNode.aloneEnd < nextNode.aloneStart: 
-                    nextNode = None
+                if nextIndex + 1 > len(sortedInput):
+                    nextNode = sortedInput[nextIndex + 1]
+                else:
+                    break
 
-                elif currentNode.aloneEnd > nextNode.aloneStart: 
-                    nextNodeRedundant = checkRedundancy(currentNode, nextNode)
-                    if nextNodeRedundant:
-                        return nextNode
-                    else:
-                        temp = nextNode.aloneStart
-                        nextNode.setAloneStart(currentNode.aloneEnd, currentNode.key)
-                        currentNode.setAloneEnd(temp, nextNode.key)
-                        currentNode.updateTotal()
-                        nextNode.updateTotal()
-                
-                        if currentNode.totalAlone < minNode.totalAlone:
-                            minNode = currentNode
-                            minIndex = index
-                        elif nextNode.totalAlone < minNode.totalAlone:
-                            minNode = nextNode
-                            minIndex = nextIndex
-
-                    if nextIndex + 1 < len(sortedInput):
-                        nextNode = sortedInput[nextIndex + 1]
-                    else:
-                        nextNode = None
-
-    return minNode
+    return minIndex
 
 
 def findMaxHours(inputFile):
     sortedInput = readFileInput(inputFile)  # read in and sort by time starting (n * nlogn)
-    lifeguardToRemove = findMinLifeguard(sortedInput) # find lifeguard to fire... m (interval length) ... n * m
-    totalHours = 0
-    intervalStart = None
-    intervalEnd = None
+    minLifeguardIndex = findMinLifeguard(sortedInput) # find lifeguard to fire... m (interval length) ... n * m
 
-    sortedInput.remove(lifeguardToRemove) # for some reason removing by index throws a key error
+    totalHours = 0
+    intervalStart = sortedInput[0].shift[0]
+    intervalEnd = sortedInput[0].shift[1]
+
+    minLifeguard = sortedInput.pop(minLifeguardIndex) 
 
     for index, node in enumerate(sortedInput):
-
-        if intervalStart == None:
-            intervalStart = node.shift[0] 
-        if intervalEnd == None:
-            intervalEnd = node.shift[1]
-
         if node.shift[0] < intervalEnd and node.shift[1] > intervalEnd:
             intervalEnd = node.shift[1]
         elif node.shift[0] > intervalEnd:
@@ -142,9 +134,4 @@ def findMaxHours(inputFile):
 for i in range(10):
     totalHours  = findMaxHours('./input/' + str(i + 1) + '.in')
     output('./output/' + str(i + 1) + '.out', totalHours)
-
-### tests
-#findMaxHours('./input/11.in')
-#findMaxHours('./input/12.in')
-#findMaxHours('./input/13.in')
 
